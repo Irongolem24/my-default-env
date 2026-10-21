@@ -1,0 +1,6 @@
+.vendor/
+.omc/
+.knowledge/.state/
+node_modules/
+*.tmp
+.knowledge/**/*.tmp

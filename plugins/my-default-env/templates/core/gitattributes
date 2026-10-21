@@ -1,0 +1,8 @@
+# my-default-env: images captured into the notebook go through git LFS
+.knowledge/assets/**/*.png filter=lfs diff=lfs merge=lfs -text
+.knowledge/assets/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+.knowledge/assets/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
+.knowledge/assets/**/*.webp filter=lfs diff=lfs merge=lfs -text
+.knowledge/assets/**/*.gif filter=lfs diff=lfs merge=lfs -text
+.knowledge/assets/**/*.psd filter=lfs diff=lfs merge=lfs -text
+.knowledge/assets/**/*.mp4 filter=lfs diff=lfs merge=lfs -text

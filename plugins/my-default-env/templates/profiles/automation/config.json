@@ -1,0 +1,1 @@
+{ "enforce": { "stop": "block", "minEvents": 3 } }

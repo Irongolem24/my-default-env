@@ -1,0 +1,11 @@
+{
+  "name": "my-default-env",
+  "displayName": "My Default Env",
+  "version": "0.1.0",
+  "description": "Forced lab-notebook recording (.knowledge/) for Claude Code and Codex: raw journal hooks, Stop-enforced notes, curate/recall skills, INDEX routing, git LFS for images",
+  "author": { "name": "Irongolem24", "url": "https://github.com/Irongolem24" },
+  "homepage": "https://github.com/Irongolem24/my-default-env",
+  "repository": "https://github.com/Irongolem24/my-default-env",
+  "license": "MIT",
+  "keywords": ["journal", "knowledge", "notebook", "hooks", "codex", "memory"]
+}

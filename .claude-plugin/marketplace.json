@@ -1,0 +1,12 @@
+{
+  "name": "my-default-env",
+  "description": "Personal one-shot environment: forced lab-notebook recording for Claude Code and Codex projects",
+  "owner": { "name": "Irongolem24", "url": "https://github.com/Irongolem24" },
+  "plugins": [
+    {
+      "name": "my-default-env",
+      "source": "./plugins/my-default-env",
+      "description": "Hooks journal every prompt and tool call to .knowledge/, force narrative notes before stopping, and curate/recall skills build an indexed, routed knowledge base shared by Claude and Codex"
+    }
+  ]
+}

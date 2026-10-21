@@ -1,0 +1,122 @@
+{
+  "$comment": "Everything this environment uses. status: adopted | trial | candidate | deprecated | rejected. Change status instead of deleting, and write why. Tool: node scripts/env.cjs status|plan|apply|review",
+  "items": [
+    {
+      "id": "my-default-env",
+      "kind": "plugin",
+      "hosts": ["claude", "codex"],
+      "status": "adopted",
+      "since": "2026-10-21",
+      "review": "2027-01-21",
+      "why": "This repo. Forced lab-notebook recording shared by Claude and Codex.",
+      "install": {
+        "claude": ["claude plugin marketplace add Irongolem24/my-default-env", "claude plugin install my-default-env@my-default-env"],
+        "codex": ["codex plugin marketplace add Irongolem24/my-default-env", "codex plugin add my-default-env@my-default-env"]
+      },
+      "check": { "claude": "my-default-env@my-default-env", "codex": "my-default-env@my-default-env" }
+    },
+    {
+      "id": "oh-my-claudecode",
+      "kind": "plugin",
+      "hosts": ["claude"],
+      "status": "adopted",
+      "since": "2026-04-24",
+      "review": "2027-01-21",
+      "why": "Multi-agent orchestration and Codex/Gemini bridges (ccg, ask, omc-teams). Its wiki/notepad overlap with .knowledge; .knowledge is the source of truth for project knowledge.",
+      "install": { "claude": ["claude plugin marketplace add https://github.com/Yeachan-Heo/oh-my-claudecode.git", "claude plugin install oh-my-claudecode@omc"] },
+      "check": { "claude": "oh-my-claudecode@omc" }
+    },
+    {
+      "id": "oh-my-codex",
+      "kind": "cli",
+      "hosts": ["codex"],
+      "status": "adopted",
+      "since": "2026-09-07",
+      "review": "2027-01-21",
+      "why": "Codex-side orchestration counterpart of OMC (global ~/.codex/hooks.json dispatcher).",
+      "install": { "codex": ["npm install -g oh-my-codex"] },
+      "check": { "bin": "omx" }
+    },
+    {
+      "id": "c2c-img",
+      "kind": "plugin",
+      "hosts": ["claude"],
+      "status": "adopted",
+      "since": "2026-10-01",
+      "review": "2027-01-21",
+      "why": "Claude to local Codex image model bridge without an API key. Core of image experiments.",
+      "install": { "claude": ["claude plugin marketplace add actionow-ai/c2c_img", "claude plugin install c2c-img@c2c-img"] },
+      "check": { "claude": "c2c-img@c2c-img" }
+    },
+    {
+      "id": "rtk",
+      "kind": "cli",
+      "hosts": ["claude"],
+      "status": "adopted",
+      "since": "2026-04-24",
+      "review": "2027-01-21",
+      "why": "Token-saving CLI proxy via PreToolUse hook.",
+      "install": { "claude": ["see https://github.com/rtk-ai/rtk then run: rtk init -g"] },
+      "check": { "bin": "rtk" }
+    },
+    {
+      "id": "harness-init",
+      "kind": "plugin",
+      "hosts": ["claude", "codex"],
+      "status": "deprecated",
+      "since": "2026-08-03",
+      "review": "2026-12-31",
+      "why": "Code-only and weakly enforced. Replaced by my-default-env (its CODEMAP/HANDOVER ideas belong in the code profile). Keep installed until existing projects are migrated, then uninstall.",
+      "install": {},
+      "check": { "claude": "harness-init@AIT" }
+    },
+    {
+      "id": "basic-memory",
+      "kind": "mcp",
+      "hosts": ["claude", "codex"],
+      "status": "trial",
+      "since": "2026-10-21",
+      "review": "2026-11-21",
+      "why": "Optional graph/semantic search MCP over .knowledge/ (format-compatible). Per project: basic-memory project add NAME PROJECT/.knowledge. AGPL, so used only as a separate tool.",
+      "research": "docs/research/basic-memory.md",
+      "install": { "claude": ["uv tool install basic-memory"] },
+      "check": { "bin": "basic-memory" }
+    },
+    {
+      "id": "beads",
+      "kind": "cli",
+      "hosts": ["claude", "codex"],
+      "status": "candidate",
+      "since": "2026-10-21",
+      "review": "2027-01-21",
+      "why": "Dependency-aware task graph. Ideas (hash ids, derived_from chains) harvested into kn. Adopt bd only if a project needs a real task graph.",
+      "research": "docs/research/beads.md",
+      "install": { "claude": ["npm install -g @beads/bd"] },
+      "check": { "bin": "bd" }
+    },
+    {
+      "id": "graphiti",
+      "kind": "mcp",
+      "hosts": ["claude", "codex"],
+      "status": "candidate",
+      "since": "2026-10-21",
+      "review": "2027-04-21",
+      "why": "Temporal knowledge graph. Its fact model is mirrored in finding frontmatter; adopt as a derived index only when 2+ adoption criteria in the research doc hold.",
+      "research": "docs/research/graphiti.md",
+      "install": {},
+      "check": {}
+    },
+    {
+      "id": "claude-mem",
+      "kind": "plugin",
+      "hosts": ["claude"],
+      "status": "rejected",
+      "since": "2026-10-21",
+      "review": "2027-04-21",
+      "why": "Daemon plus per-tool LLM summaries, Claude-centric, keeps summaries instead of raw data. Its hook IO rules, redaction and image handling were reimplemented in kn instead.",
+      "research": "docs/research/claude-mem.md",
+      "install": {},
+      "check": {}
+    }
+  ]
+}

@@ -1,0 +1,125 @@
+{
+  "generated": "2026-10-21T11:16:20.889+09:00",
+  "nodes": [
+    {
+      "id": "att-f0de55",
+      "title": "Bash 도구에서 긴 heredoc 파일 작성이 따옴표 오류로 실패",
+      "type": "attempt",
+      "path": "attempts/2026-10-21-bash-heredoc-quote-failure-f0de55.md",
+      "status": "fail"
+    },
+    {
+      "id": "att-a74a49",
+      "title": "코드 리뷰 27건 반영 (HIGH 6, MEDIUM 10, LOW 11)",
+      "type": "attempt",
+      "path": "attempts/2026-10-21-review-fixes-v010-a74a49.md",
+      "status": "success"
+    },
+    {
+      "id": "att-62e4c4",
+      "title": "Stop 차단이 노트 기록 명령 자체를 미기록 작업으로 셌다",
+      "type": "attempt",
+      "path": "attempts/2026-10-21-stop-counted-bookkeeping-62e4c4.md",
+      "status": "success"
+    },
+    {
+      "id": "fnd-3715dd",
+      "title": "Windows의 Codex는 훅 명령을 PowerShell로 실행하므로 node -e 형식을 쓴다",
+      "type": "finding",
+      "path": "findings/2026-10-21-codex-hooks-run-in-powershell-3715dd.md",
+      "status": "active"
+    },
+    {
+      "id": "fnd-2f10dd",
+      "title": "Codex는 .claude-plugin 플러그인의 hooks/hooks.json을 로드하고 PLUGIN_ROOT를 설정한다",
+      "type": "finding",
+      "path": "findings/2026-10-21-codex-loads-claude-plugin-hooks-2f10dd.md",
+      "status": "active"
+    },
+    {
+      "id": "fnd-df7610",
+      "title": "Codex 셸에는 CODEX_THREAD_ID가 있고 CLAUDECODE는 부모 Claude에서 상속될 수 있다",
+      "type": "finding",
+      "path": "findings/2026-10-21-codex-shell-env-host-detection-df7610.md",
+      "status": "active"
+    },
+    {
+      "id": "fnd-22b6a1",
+      "title": "결정: 외부 도구 코드는 복사하지 않고 재구현, Basic Memory는 형식 호환만",
+      "type": "finding",
+      "path": "findings/2026-10-21-decision-reimplement-not-copy-22b6a1.md",
+      "status": "active"
+    },
+    {
+      "id": "res-a70460",
+      "title": "Basic Memory 노트 포맷과 호환 조건",
+      "type": "research",
+      "path": "research/2026-10-21-basic-memory-format-a70460.md",
+      "status": "active"
+    },
+    {
+      "id": "res-d86bac",
+      "title": "Beads 데이터 모델과 에이전트 연동",
+      "type": "research",
+      "path": "research/2026-10-21-beads-model-d86bac.md",
+      "status": "active"
+    },
+    {
+      "id": "res-469e65",
+      "title": "claude-mem 구조 분석",
+      "type": "research",
+      "path": "research/2026-10-21-claude-mem-analysis-469e65.md",
+      "status": "active"
+    },
+    {
+      "id": "res-d54c6f",
+      "title": "Graphiti 시간 모델과 모순 처리",
+      "type": "research",
+      "path": "research/2026-10-21-graphiti-temporal-model-d54c6f.md",
+      "status": "active"
+    },
+    {
+      "id": "res-eff178",
+      "title": "Claude Code와 Codex 플러그인·훅 스펙 비교",
+      "type": "research",
+      "path": "research/2026-10-21-platform-specs-eff178.md",
+      "status": "active"
+    },
+    {
+      "id": "ent-fb9dc2",
+      "title": "codex",
+      "type": "entity",
+      "path": "entities/codex.md",
+      "status": ""
+    },
+    {
+      "id": "ent-9888ce",
+      "title": "windows",
+      "type": "entity",
+      "path": "entities/windows.md",
+      "status": ""
+    }
+  ],
+  "edges": [
+    {
+      "from": "fnd-3715dd",
+      "to": "ent-fb9dc2",
+      "rel": "about"
+    },
+    {
+      "from": "fnd-3715dd",
+      "to": "ent-9888ce",
+      "rel": "about"
+    },
+    {
+      "from": "fnd-2f10dd",
+      "to": "ent-fb9dc2",
+      "rel": "about"
+    },
+    {
+      "from": "fnd-df7610",
+      "to": "ent-fb9dc2",
+      "rel": "about"
+    }
+  ]
+}
