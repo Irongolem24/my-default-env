@@ -1,5 +1,5 @@
 {
-  "version": "0.1.0",
+  "version": "0.2.0",
   "profile": "code",
   "enforce": {
     "stop": "block",
@@ -8,7 +8,9 @@
   "capture": {
     "maxField": 4000,
     "maxPrompt": 20000,
-    "images": true
+    "maxDelegate": 20000,
+    "images": true,
+    "importImages": true
   },
   "curate": {
     "remindAfterFiles": 8
@@ -17,5 +19,5 @@
     "budget": 8000
   },
   "created": "2026-10-21T11:02:55.489+09:00",
-  "updated": "2026-10-21T11:16:19.513+09:00"
+  "updated": "2026-10-21T17:34:42.266+09:00"
 }

@@ -55,6 +55,42 @@ const NOTE_PATH = /\.knowledge(?:\\\\|\/)+(?:journal(?:\\\\|\/)+[^"]*notes\.md|a
 const READ_ONLY_SHELL = /^\s*(?:cd|ls|dir|pwd|cat|type|head|tail|less|more|wc|rg|grep|findstr|find|fd|tree|stat|file|which|where|echo|sed\s+-n|git\s+(?:status|log|diff|show|branch|remote|rev-parse|ls-files|blame|describe)|Get-ChildItem|Get-Content|Get-Item|Select-String|Test-Path|Resolve-Path|gc|gci|sls)\b/i;
 const READ_ONLY_MCP = /^mcp__.+__(?:get|list|read|search|query|find|fetch|view|describe|look)/i;
 
+// Work handed to Codex (official codex plugin, c2c-img). It runs inside a subagent or a child process,
+// so it would otherwise be invisible to the Stop count and cut short in the journal.
+// Matched per shell segment against the program actually being run, so a note or a grep that merely
+// mentions these scripts is not mistaken for delegated work.
+const SCRIPT = (name) => String.raw`(?:"[^"]*${name}"|'[^']*${name}'|[^\s"']*${name})`;
+// Optional PowerShell call operator, VAR=x prefixes, and a quoted or full path to the interpreter.
+const LAUNCH = (bin) => String.raw`^\s*(?:&\s*)?(?:\w+=\S*\s+)*(?:"[^"]*[\\/])?(?:[^\s"']*[\\/])?(?:${bin})(?:\.exe)?"?`;
+const CODEX_CMD = (subs) => new RegExp(String.raw`${LAUNCH('node')}\s+${SCRIPT(String.raw`codex-companion\.mjs`)}\s+(?:${subs})(?=\s|$)`);
+const C2C_CMD = new RegExp(String.raw`(?:${LAUNCH('python3?|py')}|^\s*(?:&\s*)?uv\s+run(?:\s+-\S+(?:\s+[^-\s]\S*)?)*(?:\s+python3?)?)\s+(?:-\S+\s+)*${SCRIPT(String.raw`c2c_img\.py`)}(?=\s|$)`);
+const DELEGATE_WORK = [CODEX_CMD('task|review|adversarial-review'), C2C_CMD];
+const DELEGATE_OUTPUT = [CODEX_CMD('task|review|adversarial-review|result|transfer'), C2C_CMD];
+const CODEX_UPKEEP = CODEX_CMD('status|result|task-resume-candidate|setup|cancel|transfer');
+const MAX_IMPORTS = 8;
+const MAX_IMPORT_TOTAL = 200 * 1024 * 1024;
+
+function segments(cmd) { return String(cmd || '').split(/&&|\|\||;|\|/); }
+function runs(cmd, res) { return segments(cmd).some((seg) => res.some((re) => re.test(seg))); }
+
+// c2c-img prints {"ok":..,"images":["/abs/a.png",..]} on stdout (exit 1 on partial failure, so the
+// JSON may sit inside an error string). Only that list is trusted; free text is never scanned.
+function c2cImages(response) {
+  const texts = [];
+  if (typeof response === 'string') texts.push(response);
+  else if (response && typeof response === 'object') for (const k of ['stdout', 'output', 'content', 'error']) if (typeof response[k] === 'string') texts.push(response[k]);
+  for (const t of texts) {
+    const a = t.indexOf('{'); const b = t.lastIndexOf('}');
+    if (a < 0 || b <= a) continue;
+    let j; try { j = JSON.parse(t.slice(a, b + 1)); } catch { continue; }
+    if (!j || !Array.isArray(j.images)) continue;
+    return j.images.filter((f) => typeof f === 'string').map((f) => (
+      process.platform === 'win32' && /^\/[a-zA-Z]\//.test(f) ? `${f[1]}:${f.slice(2)}` : f
+    )).slice(0, MAX_IMPORTS);
+  }
+  return [];
+}
+
 function shellCommand(e) {
   const i = e.input;
   if (typeof i === 'string') return i;
@@ -63,12 +99,16 @@ function shellCommand(e) {
 
 // note: this session wrote to the notebook. work: something that needs a note. ignore: looking, or notebook upkeep.
 function classify(e) {
-  if (e.ev !== 'tool' || e.agent_id || e.error) return 'ignore';
+  if (e.ev !== 'tool') return 'ignore';
   const cmd = shellCommand(e);
   const input = JSON.stringify(e.input || '');
-  if (NOTE_CMD.test(cmd) || (/write|edit|patch|notebook/i.test(e.tool) && NOTE_PATH.test(input))) return 'note';
+  // Only the main thread's own note satisfies Stop; a subagent's note does not speak for it.
+  if (!e.error && !e.agent_id && (NOTE_CMD.test(cmd) || (/write|edit|patch|notebook/i.test(e.tool) && NOTE_PATH.test(input)))) return 'note';
+  // Delegated runs count even from a subagent (codex:codex-rescue) and even when they fail.
+  if (runs(cmd, DELEGATE_WORK)) return 'work';
+  if (e.agent_id || e.error) return 'ignore';
   if (kn.READ_ONLY_TOOLS.has(e.tool) || /^(?:Agent|Task)$/.test(e.tool) || READ_ONLY_MCP.test(e.tool)) return 'ignore';
-  if (cmd && cmd.split(/&&|\|\||;|\|/).every((seg) => !seg.trim() || READ_ONLY_SHELL.test(seg) || KN_SEGMENT.test(seg))) return 'ignore';
+  if (cmd && segments(cmd).every((seg) => !seg.trim() || READ_ONLY_SHELL.test(seg) || KN_SEGMENT.test(seg) || CODEX_UPKEEP.test(seg))) return 'ignore';
   if (/\.knowledge(?:\\\\|\/)/.test(input) && !cmd) return 'ignore';
   return 'work';
 }
@@ -159,11 +199,23 @@ async function main() {
         const failed = event === 'PostToolUseFailure';
         const name = String(p.tool_name || '');
         const keep = name !== 'Read' && opts.keepImages; // Read of an image: the file already exists.
+        const cmd = shellCommand({ input: p.tool_input });
+        const out = runs(cmd, DELEGATE_OUTPUT) ? { ...opts, max: cfg.capture.maxDelegate } : opts;
         rec({
           ev: 'tool', tool: name, tool_use_id: p.tool_use_id, turn_id: p.turn_id, duration_ms: p.duration_ms,
-          input: kn.sanitize(p.tool_input, { ...opts, keepImages: keep }),
-          ...(failed ? { error: kn.sanitize(p.error, opts), interrupted: p.is_interrupt } : { response: kn.sanitize(p.tool_response, { ...opts, keepImages: keep }) }),
+          input: kn.sanitize(p.tool_input, { ...out, keepImages: keep }),
+          ...(failed ? { error: kn.sanitize(p.error, out), interrupted: p.is_interrupt } : { response: kn.sanitize(p.tool_response, { ...out, keepImages: keep }) }),
         });
+        // Journal first: a slow copy that hits the hook timeout must not lose the record above.
+        if (cfg.capture.importImages !== false && runs(cmd, [C2C_CMD])) {
+          let budget = MAX_IMPORT_TOTAL;
+          const generated = [];
+          for (const f of c2cImages(failed ? p.error : p.tool_response)) {
+            if (budget <= 0) break;
+            try { const g = kn.importImageFile(root, f); if (g) { generated.push(g); budget -= g.bytes || 0; } } catch {}
+          }
+          if (generated.length) rec({ ev: 'generated', tool_use_id: p.tool_use_id, images: generated });
+        }
         return null;
       }
       case 'PreCompact': {

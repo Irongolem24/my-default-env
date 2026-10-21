@@ -1,5 +1,5 @@
 'use strict';
-// Run: node --test tests/
+// Run: node --test tests/kn.test.cjs
 const test = require('node:test');
 const assert = require('node:assert');
 const fs = require('fs');
@@ -264,4 +264,71 @@ test('hooks.json commands use the shell-neutral node -e form', () => {
       assert.doesNotMatch(h.command, /\$/);
     }
   }
+});
+
+test('hooks: Codex delegation counts as work and c2c-img images are copied into assets', () => {
+  const dir = project('experiment');
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), 'kn c2c '));
+  const png = path.join(outside, '20261021-Red Fox.png');
+  fs.writeFileSync(png, Buffer.from('89504e470d0a1a0a0000', 'hex'));
+  const inside = path.join(dir, 'out.png');
+  fs.writeFileSync(inside, 'x');
+  // Real c2c output: indented JSON, Windows backslashes escaped; free-text image paths are never imported.
+  const stdout = `${JSON.stringify({ ok: true, images: [png, inside, '//evil.host/share/x.png'], results: [{ ok: true, path: png }] }, null, 2)}\n`;
+  hook(dir, 'post-tool', {
+    hook_event_name: 'PostToolUse', tool_name: 'Bash',
+    tool_input: { command: 'cd /tmp && python "C:/x/skills/c2c-img/scripts/c2c_img.py" "a red fox"' },
+    tool_response: { stdout, stderr: '' },
+  });
+  hook(dir, 'post-tool', {
+    hook_event_name: 'PostToolUse', tool_name: 'Bash',
+    tool_input: { command: 'node "C:/p/codex/scripts/codex-companion.mjs" result' },
+    tool_response: { stdout: `see ${png}`, stderr: '' },
+  });
+  // Mentioning the scripts is not running them; a note about c2c is still a note.
+  const tool = (command) => hook(dir, 'post-tool', { hook_event_name: 'PostToolUse', tool_name: 'Bash', tool_input: { command }, tool_response: 'ok' });
+  tool('rg c2c_img.py docs');
+  tool('node "C:/p/codex/scripts/codex-companion.mjs" task-resume-candidate --json');
+  // The codex rescue subagent forwards one Bash call; it has agent_id but is real work.
+  const long = 'codex says '.repeat(1000);
+  hook(dir, 'post-tool', {
+    hook_event_name: 'PostToolUse', tool_name: 'Bash', agent_id: 'a1', agent_type: 'codex:codex-rescue',
+    tool_input: { command: 'node "C:/p/codex/scripts/codex-companion.mjs" task --write "fix the bug"' },
+    tool_response: { stdout: long, stderr: '' },
+  });
+  hook(dir, 'post-tool', { hook_event_name: 'PostToolUse', tool_name: 'Bash', agent_id: 'a2', tool_input: { command: 'npm test' }, tool_response: 'ok' });
+
+  const lines = fs.readFileSync(kn.journalFile(dir, 'claude', 'sess-0001-abcdef'), 'utf8').trim().split('\n').map(JSON.parse);
+  const gens = lines.filter((l) => l.ev === 'generated');
+  assert.strictEqual(gens.length, 1, 'only c2c-img JSON output is imported, not codex result text');
+  const gen = gens[0].images;
+  assert.strictEqual(gen.length, 2, 'UNC path rejected');
+  const copied = gen.find((g) => g.image);
+  assert.match(copied.image, /^assets\/generated\/20261021-red-fox-[0-9a-f]{8}\.png$/);
+  assert.ok(fs.existsSync(path.join(dir, '.knowledge', ...copied.image.split('/'))));
+  assert.ok(!copied.src.includes(os.homedir()), 'no absolute home path in the journal');
+  assert.deepStrictEqual(gen.find((g) => !g.image).in_project, 'out.png', 'files already in the project are not duplicated');
+  const codex = lines.find((l) => l.agent_type === 'codex:codex-rescue');
+  assert.strictEqual(codex.response.stdout, long, 'delegated output keeps the larger capture limit');
+
+  const blocked = hook(dir, 'stop', { hook_event_name: 'Stop' });
+  assert.match(blocked.reason, /2건/, 'c2c-img and codex task count; mentions, probes and other subagent work do not');
+
+  // Windows launch shapes: script path with a space, PowerShell call operator, python.exe, env prefix.
+  tool('& python.exe "C:/Users/John Doe/.claude/plugins/c2c/scripts/c2c_img.py" "fox"');
+  tool('PYTHONUTF8=1 "C:/Program Files/Python312/python.exe" "C:/Users/John Doe/c2c_img.py" fox');
+  tool('uv run --with pillow python C:/x/c2c_img.py fox');
+  tool('node "C:/Users/John Doe/.claude/plugins/codex/scripts/codex-companion.mjs" review');
+  assert.match(hook(dir, 'stop', { hook_event_name: 'Stop' }).reason, /6건/);
+
+  hook(dir, 'post-tool', { hook_event_name: 'PostToolUse', tool_name: 'Bash', agent_id: 'a3', tool_input: { command: 'node .knowledge/bin/kn.cjs note --title sub x' }, tool_response: 'ok' });
+  tool('npm run build');
+  assert.match(hook(dir, 'stop', { hook_event_name: 'Stop' }).reason, /7건/, "a subagent's note does not satisfy the main thread");
+
+  tool('node .knowledge/bin/kn.cjs note --title "c2c fox" "ran c2c_img.py and codex-companion.mjs task"');
+  assert.strictEqual(hook(dir, 'stop', { hook_event_name: 'Stop' }), null, 'a note quoting the commands satisfies Stop');
+});
+
+test('regression: .env style lines in delegated output are masked', () => {
+  assert.strictEqual(kn.redact('DATABASE_URL=postgres://db.internal:5432/prod_main\nX=1'), 'DATABASE_URL=[REDACTED]\nX=1');
 });

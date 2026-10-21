@@ -1,5 +1,5 @@
 <!-- my-default-env:start -->
-## 연구노트 규칙 (my-default-env 0.1.0, profile: code)
+## 연구노트 규칙 (my-default-env 0.2.0, profile: code)
 
 이 프로젝트는 `.knowledge/`에 모든 작업을 사람의 연구노트처럼 남긴다. Claude와 Codex가 같은 노트를 공유한다. 이 블록은 `kn upgrade`가 관리하므로 직접 고치지 말고, 프로젝트 고유 규칙은 블록 밖에 쓴다.
 
@@ -15,6 +15,8 @@
 - 확정된 사실 = `kn.cjs new finding --title "..."` (claim은 혼자 읽혀도 이해되는 한 문장, sources 필수). 조사한 외부 정보 = `kn.cjs new research`.
 - 사실이 바뀌면 옛 노트를 지우거나 고치지 않는다: `kn.cjs supersede <옛 id> <새 id> --reason "..."`. 날짜로 판단할 수 없는 모순은 둘 다 `status: disputed`.
 - 노트를 만들거나 고친 뒤에는 `kn.cjs index`로 INDEX.md를 갱신한다.
+- Codex에 맡긴 일(`/codex:rescue`, `/codex:review`, `/codex:adversarial-review`, c2c-img)도 Claude가 기록한다. Codex 내부의 도구 사용은 journal에 남지 않으므로, 맡긴 지시문, Codex의 결론, 실제로 바뀐 파일(`git diff --stat`), Claude의 채택·기각 판단을 note나 attempt에 쓴다. 노트에는 어느 모델이 무엇을 했는지 구분해 적는다.
+- c2c-img로 만든 이미지는 가능하면 `-o .knowledge/assets/<attempt stem>/<이름>.png`로 저장한다. `-o` 없이 만든 이미지는 훅이 `.knowledge/assets/generated/`로 복사하고 journal의 `generated`에 경로를 남긴다. attempt에는 그 경로를 링크한다.
 - 사람이 나중에 다시 찾을 상황이 떠오르면 frontmatter `when:`에 한 줄로 쓴다. 중요하면 `priority: high|critical`.
 
 **형식**

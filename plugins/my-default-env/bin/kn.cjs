@@ -5,10 +5,11 @@
 // as a CLI from the plugin (init/upgrade), and as a library required by hooks/run.cjs.
 
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 const crypto = require('crypto');
 
-const VERSION = '0.1.0';
+const VERSION = '0.2.0';
 const KN = '.knowledge';
 const CURATED_DIRS = { attempt: 'attempts', finding: 'findings', research: 'research', entity: 'entities' };
 const KIND_PREFIX = { attempt: 'att', finding: 'fnd', research: 'res', entity: 'ent' };
@@ -19,7 +20,7 @@ const DEFAULT_CONFIG = {
   version: VERSION,
   profile: 'code',
   enforce: { stop: 'block', minEvents: 3 },
-  capture: { maxField: 4000, maxPrompt: 20000, images: true },
+  capture: { maxField: 4000, maxPrompt: 20000, maxDelegate: 20000, images: true, importImages: true },
   curate: { remindAfterFiles: 8 },
   context: { budget: 8000 },
 };
@@ -209,6 +210,8 @@ const REDACTIONS = [
   [/(\b[a-z][a-z0-9+.-]*:\/\/[^\s:@/]+:)[^\s@/]+@/gi, '$1[REDACTED]@'],
   [/((?:api[_-]?key|secret|token|access[_-]?key|client[_-]?secret)["']?\s*[:=]\s*["']?)[^\s"',;]{8,}/gi, '$1[REDACTED]'],
   [/((?:password|passwd|pwd)["']?\s*[:=]\s*["']?)[^\s"',;]{3,}/gi, '$1[REDACTED]'],
+  // .env style lines quoted in reviews (DATABASE_URL=..., SOME_KEY=...); long values only.
+  [/^(\s*(?:export\s+)?[A-Z][A-Z0-9_]{2,}=)["']?[^\s"']{16,}["']?/gm, '$1[REDACTED]'],
 ];
 
 // Object keys whose values are secrets regardless of what the value looks like.
@@ -236,6 +239,37 @@ function saveImage(root, mediaType, b64, keep) {
   const abs = knPath(root, ...rel.split('/'));
   if (!fs.existsSync(abs)) { fs.mkdirSync(path.dirname(abs), { recursive: true }); fs.writeFileSync(abs, buf); }
   return { image: rel, media_type: mediaType, bytes: buf.length };
+}
+
+const IMAGE_FILE = /\.(png|jpe?g|webp|gif)$/i;
+const MAX_IMPORT_BYTES = 50 * 1024 * 1024;
+
+// Copies an image file produced outside the project (c2c-img writes to ~/Pictures by default)
+// into assets/generated/ so it is committed with LFS. Same bytes import to the same file.
+function importImageFile(root, file) {
+  // Network paths (\\host\share, //host/share) would make stat itself reach out over SMB.
+  if (typeof file !== 'string' || !path.isAbsolute(file) || /^[\\/]{2}/.test(file)) return null;
+  const abs = path.resolve(file);
+  if (!IMAGE_FILE.test(abs)) return null;
+  let st; try { st = fs.statSync(abs); } catch { return null; }
+  if (!st.isFile() || st.size > MAX_IMPORT_BYTES) return null;
+  const rel0 = path.relative(path.resolve(root), abs);
+  if (rel0 && rel0 !== '..' && !rel0.startsWith(`..${path.sep}`) && !path.isAbsolute(rel0)) return { image: null, in_project: rel0.split(path.sep).join('/') };
+  const buf = fs.readFileSync(abs);
+  const base = path.basename(abs).replace(IMAGE_FILE, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40) || 'image';
+  const ext = IMAGE_FILE.exec(abs)[1].toLowerCase().replace('jpeg', 'jpg');
+  const rel = `assets/generated/${base}-${crypto.createHash('sha256').update(buf).digest('hex').slice(0, 8)}.${ext}`;
+  const dest = knPath(root, ...rel.split('/'));
+  if (!fs.existsSync(dest)) {
+    fs.mkdirSync(path.dirname(dest), { recursive: true });
+    const tmp = `${dest}.${process.pid}.tmp`;
+    fs.writeFileSync(tmp, buf);
+    fs.renameSync(tmp, dest);
+  }
+  // The journal is committed, so the source is kept relative to home (no username).
+  const home = os.homedir();
+  const src = abs.startsWith(home + path.sep) ? `~/${path.relative(home, abs).split(path.sep).join('/')}` : path.basename(abs);
+  return { src, image: rel, bytes: buf.length };
 }
 
 // Replaces inline base64 images with a file reference (or a stub) and redacts/truncates strings.
@@ -941,7 +975,7 @@ function cli(argv) {
 
 module.exports = {
   VERSION, KN, CURATED_DIRS, READ_ONLY_TOOLS, findRoot, knPath, loadConfig, nowIso, today,
-  parseFrontmatter, stringifyFrontmatter, updateFrontmatter, sanitize, redact, truncate,
+  parseFrontmatter, stringifyFrontmatter, updateFrontmatter, sanitize, redact, truncate, importImageFile,
   sessionTag, journalFile, appendJournal, appendNote, knCommand, sleepMs, pendingJournal, markCurated, digest,
   loadNotes, newNote, buildIndex, buildGraph, lint, withToc, install, status, sessionContext, readJson, writeJson,
 };

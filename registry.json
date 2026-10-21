@@ -27,13 +27,25 @@
       "check": { "claude": "oh-my-claudecode@omc" }
     },
     {
+      "id": "codex-plugin-cc",
+      "kind": "plugin",
+      "hosts": ["claude"],
+      "status": "adopted",
+      "since": "2026-10-21",
+      "review": "2027-01-21",
+      "why": "OpenAI's official Codex plugin for Claude Code. Main Claude to Codex path: /codex:review, /codex:adversarial-review, /codex:rescue (codex:codex-rescue subagent). Work is done from the Claude CLI only; my-default-env counts its task/review calls as work and keeps their output at capture.maxDelegate.",
+      "research": ".vendor/codex-plugin-cc (shallow clone, not committed)",
+      "install": { "claude": ["claude plugin marketplace add openai/codex-plugin-cc", "claude plugin install codex@openai-codex", "then in Claude Code: /codex:setup"] },
+      "check": { "claude": "codex@openai-codex" }
+    },
+    {
       "id": "oh-my-codex",
       "kind": "cli",
       "hosts": ["codex"],
       "status": "adopted",
       "since": "2026-09-07",
       "review": "2027-01-21",
-      "why": "Codex-side orchestration counterpart of OMC (global ~/.codex/hooks.json dispatcher).",
+      "why": "Codex-side orchestration counterpart of OMC (global ~/.codex/hooks.json dispatcher). Re-check by the review date: since 2026-10-21 Codex is driven from Claude (codex-plugin-cc), not used interactively, and its global hooks also run inside those Codex sessions.",
       "install": { "codex": ["npm install -g oh-my-codex"] },
       "check": { "bin": "omx" }
     },
@@ -44,7 +56,7 @@
       "status": "adopted",
       "since": "2026-10-01",
       "review": "2027-01-21",
-      "why": "Claude to local Codex image model bridge without an API key. Core of image experiments.",
+      "why": "Claude to local Codex image model bridge without an API key. Core of image experiments. Saves to ~/Pictures/c2c_img without -o; the my-default-env hook copies those images into .knowledge/assets/generated/.",
       "install": { "claude": ["claude plugin marketplace add actionow-ai/c2c_img", "claude plugin install c2c-img@c2c-img"] },
       "check": { "claude": "c2c-img@c2c-img" }
     },
